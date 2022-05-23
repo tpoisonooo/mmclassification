@@ -16,7 +16,7 @@ class ImageClassifier(BaseClassifier):
                  train_cfg=None,
                  init_cfg=None):
         super(ImageClassifier, self).__init__(init_cfg)
-
+        
         if pretrained is not None:
             self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
         self.backbone = build_backbone(backbone)

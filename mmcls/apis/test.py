@@ -13,6 +13,63 @@ from mmcv.image import tensor2imgs
 from mmcv.runner import get_dist_info
 
 
+# def single_gpu_test(model,
+#                     data_loader,
+#                     show=False,
+#                     out_dir=None,
+#                     **show_kwargs):
+#     model.eval()
+#     results = []
+#     dataset = data_loader.dataset
+#     MAX_LEN = min(2000, len(dataset))
+#     prog_bar = mmcv.ProgressBar(len(dataset))
+#     for i, data in enumerate(data_loader):
+#         with torch.no_grad():
+#             result = model(return_loss=False, **data)
+
+#         batch_size = len(result)
+#         results.extend(result)
+
+#         if show or out_dir:
+#             scores = np.vstack(result)
+#             pred_score = np.max(scores, axis=1)
+#             pred_label = np.argmax(scores, axis=1)
+#             pred_class = [model.CLASSES[lb] for lb in pred_label]
+
+#             img_metas = data['img_metas'].data[0]
+#             imgs = tensor2imgs(data['img'], **img_metas[0]['img_norm_cfg'])
+#             assert len(imgs) == len(img_metas)
+
+#             for i, (img, img_meta) in enumerate(zip(imgs, img_metas)):
+#                 h, w, _ = img_meta['img_shape']
+#                 img_show = img[:h, :w, :]
+
+#                 ori_h, ori_w = img_meta['ori_shape'][:-1]
+#                 img_show = mmcv.imresize(img_show, (ori_w, ori_h))
+
+#                 if out_dir:
+#                     out_file = osp.join(out_dir, img_meta['ori_filename'])
+#                 else:
+#                     out_file = None
+
+#                 result_show = {
+#                     'pred_score': pred_score[i],
+#                     'pred_label': pred_label[i],
+#                     'pred_class': pred_class[i]
+#                 }
+#                 model.module.show_result(
+#                     img_show,
+#                     result_show,
+#                     show=show,
+#                     out_file=out_file,
+#                     **show_kwargs)
+
+#         batch_size = data['img'].size(0)
+#         for _ in range(batch_size):
+#             prog_bar.update()
+#     return results
+
+
 def single_gpu_test(model,
                     data_loader,
                     show=False,
@@ -21,8 +78,13 @@ def single_gpu_test(model,
     model.eval()
     results = []
     dataset = data_loader.dataset
-    prog_bar = mmcv.ProgressBar(len(dataset))
-    for i, data in enumerate(data_loader):
+    MAX_LEN = min(4000, len(dataset))
+    prog_bar = mmcv.ProgressBar(MAX_LEN)
+    for i in range(MAX_LEN):
+        data = dataset[i]
+        data['img'] = data['img'].reshape((1,3,224,224))
+    # for i, data in enumerate(data_loader):
+
         with torch.no_grad():
             result = model(return_loss=False, **data)
 
@@ -63,7 +125,12 @@ def single_gpu_test(model,
                     out_file=out_file,
                     **show_kwargs)
 
-        batch_size = data['img'].size(0)
+        # batch_size = data['img'].size(0)
+        if len(data['img'].size()) == 4:
+            batch_size = data['img'].size(0)
+        else:
+            batch_size = 1
+
         for _ in range(batch_size):
             prog_bar.update()
     return results

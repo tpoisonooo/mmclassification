@@ -58,6 +58,12 @@ class TransformerEncoderLayer(BaseModule):
             norm_cfg, self.embed_dims, postfix=1)
         self.add_module(self.norm1_name, norm1)
 
+        # print("vision_trans config:")
+        # print(embed_dims)
+        # print(num_heads)
+        # print(feedforward_channels)
+        # print(num_fcs)
+
         self.attn = MultiheadAttention(
             embed_dims=embed_dims,
             num_heads=num_heads,
@@ -77,6 +83,9 @@ class TransformerEncoderLayer(BaseModule):
             ffn_drop=drop_rate,
             dropout_layer=dict(type='DropPath', drop_prob=drop_path_rate),
             act_cfg=act_cfg)
+        # print("vision_trans model:")
+        # print(self.attn)
+        # print(self.ffn)
 
     @property
     def norm1(self):

@@ -33,6 +33,7 @@ def init_model(config, checkpoint=None, device='cuda:0', options=None):
         config.merge_from_dict(options)
     config.model.pretrained = None
     model = build_classifier(config.model)
+
     if checkpoint is not None:
         # Mapping the weights to GPU may cause unexpected video memory leak
         # which refers to https://github.com/open-mmlab/mmdetection/pull/6405

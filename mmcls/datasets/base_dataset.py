@@ -159,6 +159,7 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
         gt_labels = self.get_gt_labels()
         if indices is not None:
             gt_labels = gt_labels[indices]
+        gt_labels = gt_labels[0:len(results)]
         num_imgs = len(results)
         assert len(gt_labels) == num_imgs, 'dataset testing results should '\
             'be of the same length as gt_labels.'

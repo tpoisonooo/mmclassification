@@ -306,6 +306,19 @@ class ShiftWindowMSA(BaseModule):
         return attn_mask
 
 
+# class MultiheadAttentionFunction(Function):
+#     @staticmethod
+#     def symbolic(g, q, k):
+#         return g.op("MultiheadAttentionFunction", q, k)
+
+#     @staticmethod
+#     def forward(self, q, k, scale):
+#         attn = (q @ k.transpose(-2, -1)) * scale
+#         attn = attn.softmax(dim=-1)
+#         # attn = self.attn_drop(attn)
+#         return attn
+
+
 class MultiheadAttention(BaseModule):
     """Multi-head Attention Module.
 
@@ -367,17 +380,60 @@ class MultiheadAttention(BaseModule):
         self.out_drop = DROPOUT_LAYERS.build(dropout_layer)
 
     def forward(self, x):
+        # [1,145,768]
         B, N, _ = x.shape
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads,
-                                  self.head_dims).permute(2, 0, 3, 1, 4)
-        q, k, v = qkv[0], qkv[1], qkv[2]
+        # B=1 N=145
 
+        # [input_dims, embed_dims * 3] + bias
+        # [768,2304]
+        # reshape => [3, 768, 768] => q,k,v
+        # input -> bcast -> [3, 145, 768]
+        # qkv(input_bcast) -> 3 * [1, 145, 768] -> reshape [1, 145, 12, 64]
+        # dimshuffle -> 3 * [1, 12, 145, 64]
+        # 3 inputs execute Scaled Dot-Product Attention
+        # -> [1, 145, 768]
+        # Linear * [768, 768] + bias
+
+        import numpy as np
+
+        np.save("multihead_inp", x)
+        np.save("qkv_w", self.qkv.weight.data)
+        np.save("qkv_b", self.qkv.bias.data)
+
+        qkv = self.qkv(x) # qkv= inp @ (qkv_w.transpose()) + qkv_b
+        
+        qkv = qkv.reshape(B, N, 3, self.num_heads,
+                                  self.head_dims).permute(2, 0, 3, 1, 4)
+
+        # qkv.shape = [3,1,12,145,64]
+        # q,k,v.shape = [1,12,145,64]
+        q, k, v = qkv[0], qkv[1], qkv[2]
+        np.save("q", q)
+        np.save("k", k)
+        np.save("v", v)
+
+        # attn.shape = [1,12,145,145]
         attn = (q @ k.transpose(-2, -1)) * self.scale
+        np.save("qk.scale", attn)
         attn = attn.softmax(dim=-1)
+        np.save("softmax", attn)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, self.embed_dims)
+        # x.shape = [1,12,145,64]
+        x = (attn @ v)
+        np.save("v.softmax", x)
+
+        # x.shape = [1,145,768]
+        x = x.transpose(1, 2).reshape(B, N, self.embed_dims)
+        # proj.shape = [768,768]
+        np.save("v.softmax.reshape", x)
+
         x = self.proj(x)
+        np.save("o_w", self.proj.weight.data)
+        np.save("o_b", self.proj.bias.data)
+
+        np.save("final", x)
+
         x = self.out_drop(self.proj_drop(x))
 
         if self.v_shortcut:
